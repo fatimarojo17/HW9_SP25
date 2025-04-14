@@ -11,18 +11,11 @@ import sys
 
 # region class definitions
 class MainWindow(Ui_TrussStructuralDesign, qtw.QWidget):
-    """Main application window for truss structural design and visualization."""
 
     def __init__(self):
         """
         Initialize the main window and set up the truss design UI.
 
-        Steps:
-        1. Set up UI from designer.
-        2. Connect signals for buttons and zoom control.
-        3. Initialize truss controller and assign display widgets.
-        4. Configure scene event filter and mouse tracking.
-        5. Show the window.
         """
         super().__init__()
 
@@ -55,9 +48,6 @@ class MainWindow(Ui_TrussStructuralDesign, qtw.QWidget):
         """
         Update the graphics view zoom level based on spinbox value.
 
-        Steps:
-        1. Reset any existing transformations.
-        2. Apply scaling based on spinbox value.
         """
         # Step 1: Reset transform
         self.gv_Main.resetTransform()
@@ -69,16 +59,6 @@ class MainWindow(Ui_TrussStructuralDesign, qtw.QWidget):
         """
         Handle events in the graphics scene, such as mouse movement and wheel scrolling.
 
-        Steps:
-        1. Check if event is for the controller's scene.
-        2. Handle mouse move: Update mouse position label via controller.
-        3. Handle wheel: Adjust zoom level.
-        4. Handle tooltip: Currently no action.
-        5. Pass event to parent widget.
-
-        :param obj: Object receiving the event
-        :param event: QEvent object
-        :return: bool, whether event was handled
         """
         if obj == self.controller.view.scene:
             # Step 2: Handle mouse move
@@ -105,12 +85,6 @@ class MainWindow(Ui_TrussStructuralDesign, qtw.QWidget):
         """
         Open a file dialog to load truss data and pass it to the controller.
 
-        Steps:
-        1. Open file dialog to select a file.
-        2. If no file selected, exit.
-        3. Display file path in text edit.
-        4. Read file contents.
-        5. Pass data to controller for processing.
         """
         # Step 1: Open file dialog
         filename = qtw.QFileDialog.getOpenFileName()[0]
@@ -136,11 +110,6 @@ class MainWindow(Ui_TrussStructuralDesign, qtw.QWidget):
 def Main():
     """
     Create and run the QApplication for the truss design tool.
-
-    Steps:
-    1. Initialize QApplication.
-    2. Create main window.
-    3. Execute application loop.
     """
     # Step 1: Create app
     app = qtw.QApplication(sys.argv)
@@ -151,7 +120,7 @@ def Main():
     # Step 3: Run app
     sys.exit(app.exec())
 
-
+# function calls are from the controller
 # endregion
 
 # region function calls

@@ -14,34 +14,36 @@ from scipy import optimize
 
 # region class definitions
 class RigidLink(qtw.QGraphicsItem):
-    """A custom QGraphicsItem to draw a rigid link with semicircular ends and pivot points."""
 
     def __init__(self, stX, stY, enX, enY, radius=10, parent=None, pen=None, brush=None, name='RigidLink'):
         """
-        Initialize a rigid link with start and end points, radius, pen, and brush.
+        This is a custom class for drawing a rigid link.  The paint function executes everytime the scene
+        which holds the link is updated.  The steps to making the link are:
 
-        Steps:
-        1. Store pen, brush, coordinates, and radius.
-        2. Compute length and angle of the link.
-        3. Define the bounding rectangle.
-        4. Set up transformation for rotation and translation.
+        1. Specify the pen, brush, start and end x,y coordinates of the link and radius by unpacking arguments
+        2. Compute the length and angle of the link (also sets self.DX, self.DY)
+        3. Compute the rectangle that will contain the link (i.e., its bounding box)
+        4. Setup the transformation that will rotate and then translate the link
 
-        Note: The link is drawn aligned with the x-axis (start at 0,0, end at length,0),
-        then rotated and translated to its final position.
+        *Note:  The paint function is called each time the scene changes.  I draw a link aligned with the x-axis first
+        with the start point at 0,0 and end point at length, 0. Then, the path painter draws the centerline and the
+        start and end pivot points, then the start semicircle, a line to the end semicircle, the end semicircle,
+        and a line back to the start semicircle.  Finally, the link is rotated about 0,0 and then translated to startX,
+        startY.  In this way, the bounding rectangle gets transformed and this helps with detecting the item in the
+        graphics view when the mouse hovers.
 
-        :param stX: Start x-coordinate
-        :param stY: Start y-coordinate
-        :param enX: End x-coordinate
-        :param enY: End y-coordinate
-        :param radius: Radius of semicircular ends
-        :param parent: Parent QGraphicsItem, default None
-        :param pen: QPen for outline, default None
-        :param brush: QBrush for fill, default None
-        :param name: Name of the link, default 'RigidLink'
+        :param stX:
+        :param stY:
+        :param enX:
+        :param enY:
+        :param radius:
+        :param parent:
+        :param pen:
+        :param brush:
         """
         super().__init__(parent)
 
-        # Step 1: Store properties
+        # Step 1
         self.pen = pen
         self.brush = brush
         self.name = name
@@ -51,62 +53,32 @@ class RigidLink(qtw.QGraphicsItem):
         self.endY = enY
         self.radius = radius
 
-        # Step 2: Compute angle (also sets length, DX, DY)
+        # Step 2
         self.angle = self.linkAngle()
 
-        # Step 3: Define bounding rectangle
+        # Step 3
         self.rect = qtc.QRectF(-self.radius, -self.radius, self.length + self.radius, self.radius)
 
-        # Step 4: Initialize transformation
+        # Step 4
         self.transform = qtg.QTransform()
         self.transform.reset()
 
     def boundingRect(self):
-        """
-        Return the transformed bounding rectangle for mouse interaction.
-
-        :return: QRectF, the bounding rectangle after transformation
-        """
         return self.transform.mapRect(self.rect)
 
     def deltaY(self):
-        """
-        Calculate the difference in y-coordinates (endY - startY).
-
-        :return: float, delta y
-        """
         self.DY = self.endY - self.startY
         return self.DY
 
     def deltaX(self):
-        """
-        Calculate the difference in x-coordinates (endX - startX).
-
-        :return: float, delta x
-        """
         self.DX = self.endX - self.startX
         return self.DX
 
     def linkLength(self):
-        """
-        Compute the Euclidean length of the link using deltaX and deltaY.
-
-        :return: float, length of the link
-        """
         self.length = math.sqrt(math.pow(self.deltaX(), 2) + math.pow(self.deltaY(), 2))
         return self.length
 
     def linkAngle(self):
-        """
-        Calculate the angle of the link relative to the x-axis.
-
-        Steps:
-        1. Compute length.
-        2. If length is zero, set angle to 0.
-        3. Otherwise, compute angle using acos(DX/length) and adjust sign based on DY.
-
-        :return: float, angle in radians
-        """
         self.linkLength()
         if self.length == 0.0:
             self.angle = 0
@@ -117,19 +89,14 @@ class RigidLink(qtw.QGraphicsItem):
 
     def paint(self, painter, option, widget=None):
         """
-        Draw the rigid link with semicircular ends and pivot points.
-
-        Steps:
-        1. Create a QPainterPath for the link shape.
-        2. Draw a dashed centerline.
-        3. Draw semicircles at start and end, connected by lines.
-        4. Draw pivot point circles.
-        5. Apply pen, brush, and transformations.
-        6. Set tooltip with link details.
-
-        :param painter: QPainter object
-        :param option: QStyleOptionGraphicsItem
-        :param widget: QWidget, default None
+        This function creates a path painter the paints a semicircle around the start point (ccw), a straight line
+        offset from the main axis of the link, a semicircle around the end point (ccw), and a straight line offset from
+        the main axis.  It then assigns a pen and brush.  Finally, it draws a circle at the start and end points to
+        indicate the pivot points.
+        :param painter:
+        :param option:
+        :param widget:
+        :return:
         """
         # Instantiate painter path
         path = qtg.QPainterPath()
@@ -192,32 +159,13 @@ class RigidLink(qtw.QGraphicsItem):
 
 
 class RigidPivotPoint(qtw.QGraphicsItem):
-    """A custom QGraphicsItem to draw a pivot point with a base and circular pivot."""
 
     def __init__(self, ptX, ptY, pivotHeight, pivotWidth, parent=None, pen=None, brush=None, rotation=0,
                  name='RigidPivotPoint'):
-        """
-        Initialize a pivot point with position, dimensions, and styling.
 
-        Steps:
-        1. Store coordinates, dimensions, pen, brush, rotation, and name.
-        2. Define bounding rectangle.
-        3. Set up transformation.
-        4. Set tooltip with coordinates.
-
-        :param ptX: X-coordinate of pivot center
-        :param ptY: Y-coordinate of pivot center
-        :param pivotHeight: Height of pivot base
-        :param pivotWidth: Width of pivot base
-        :param parent: Parent QGraphicsItem, default None
-        :param pen: QPen for outline, default None
-        :param brush: QBrush for fill, default None
-        :param rotation: Initial rotation angle in degrees, default 0
-        :param name: Name of the pivot, default 'RigidPivotPoint'
-        """
         super().__init__(parent)
 
-        # Step 1: Store properties
+        # Step 1
         self.x = ptX
         self.y = ptY
         self.pen = pen
@@ -228,13 +176,13 @@ class RigidPivotPoint(qtw.QGraphicsItem):
         self.rotationAngle = rotation
         self.name = name
 
-        # Step 2: Define bounding rectangle
+        # Step 2
         self.rect = qtc.QRectF(self.x - self.width / 2, self.y - self.radius, self.width, self.height + self.radius)
 
-        # Step 3: Initialize transformation
+        # Step 3
         self.transformation = qtg.QTransform()
 
-        # Step 4: Set tooltip
+        # Step 4
         stTT = self.name + "\nx={:0.3f}, y={:0.3f}".format(self.x, self.y)
         self.setToolTip(stTT)
 
@@ -255,20 +203,7 @@ class RigidPivotPoint(qtw.QGraphicsItem):
         self.rotationAngle = angle
 
     def paint(self, painter, option, widget=None):
-        """
-        Draw the pivot point with a trapezoidal base, circular pivot, and hatched support.
 
-        Steps:
-        1. Create a QPainterPath for the pivot shape.
-        2. Compute geometric parameters for trapezoid.
-        3. Draw trapezoid, pivot circle, and base line.
-        4. Draw hatched support rectangle.
-        5. Apply pen, brush, and transformations.
-
-        :param painter: QPainter object
-        :param option: QStyleOptionGraphicsItem
-        :param widget: QWidget, default None
-        """
         # Instantiate painter path
         path = qtg.QPainterPath()
         radius = min(self.height, self.width) / 2
@@ -335,40 +270,33 @@ class RigidPivotPoint(qtw.QGraphicsItem):
 
 
 class MainWindow(Ui_Form, qtw.QWidget):
-    """Main application window for displaying and interacting with a linkage system."""
 
     def __init__(self):
         """
-        Initialize the main window and set up the graphics view, scene, and UI.
-
-        Steps:
-        1. Set up UI from designer.
-        2. Configure graphics view and scene.
-        3. Enable mouse tracking.
-        4. Build initial scene with pivots and links.
-        5. Connect signals for zoom and color picking.
+         This program illustrates the use of the graphics view framework.  The QGraphicsView widget is created in
+        designer.  The QGraphicsView displays a QGraphicsScene.  A QGraphicsScene contains QGraphicsItem objects
         """
         super().__init__()
 
-        # Step 1: Set up UI
+        # Step 1
         self.setupUi(self)
 
-        # Step 2: Configure graphics
+        # Step 2
         self.setupGraphics()
 
-        # Step 3: Enable mouse tracking
+        # Step 3
         self.gv_Main.setMouseTracking(True)
         self.pushButton.setMouseTracking(True)
         self.setMouseTracking(True)
 
-        # Step 4: Build initial scene
+        # Step 4
         self.buildScene()
         self.prevAlpha = self.link1.angle
         self.prevBeta = self.link3.angle
         self.angle1 = math.pi
         self.angle2 = math.pi
 
-        # Step 5: Connect signals
+        # Step 5
         self.spnd_Zoom.valueChanged.connect(self.setZoom)
         self.pushButton.clicked.connect(self.pickAColor)
         self.scene.installEventFilter(self)
@@ -379,31 +307,24 @@ class MainWindow(Ui_Form, qtw.QWidget):
         """
         Set up the QGraphicsScene and assign it to the QGraphicsView.
 
-        Steps:
-        1. Create a scene with a defined rectangle.
-        2. Assign scene to graphics view.
-        3. Set up pens and brushes.
         """
-        # Step 1: Create scene
+        # Step 1
         self.scene = qtw.QGraphicsScene()
         self.scene.setObjectName("MyScene")
         self.scene.setSceneRect(-200, -200, 400, 400)  # xLeft, yTop, Width, Height
 
-        # Step 2: Assign to graphics view
+        # Step 2
         self.gv_Main.setScene(self.scene)
 
-        # Step 3: Set up pens and brushes
+        # Step 3
         self.setupPensAndBrushes()
 
     def setupPensAndBrushes(self):
         """
         Define pens and brushes for drawing.
 
-        Steps:
-        1. Create pens with different styles and colors.
-        2. Create brushes for filling shapes.
         """
-        # Step 1: Define pens
+        # Step 1
         self.penThick = qtg.QPen(qtc.Qt.darkGreen)
         self.penThick.setWidth(5)  # Thick green pen
         self.penMed = qtg.QPen(qtc.Qt.darkBlue)
@@ -415,7 +336,7 @@ class MainWindow(Ui_Form, qtw.QWidget):
         self.penGridLines.setWidth(1)
         self.penGridLines.setColor(qtg.QColor.fromHsv(197, 144, 228, 128))  # Grid line pen
 
-        # Step 2: Define brushes
+        # Step 2
         self.brushFill = qtg.QBrush(qtc.Qt.darkRed)  # Solid red fill
         self.brushHatch = qtg.QBrush()
         self.brushHatch.setStyle(qtc.Qt.DiagCrossPattern)  # Hatch pattern
@@ -427,7 +348,6 @@ class MainWindow(Ui_Form, qtw.QWidget):
         """
         Update window title with mouse coordinates and widget name.
 
-        :param a0: QMouseEvent object
         """
         w = app.widgetAt(a0.globalPos())
         name = 'none' if w is None else w.objectName()
@@ -437,16 +357,6 @@ class MainWindow(Ui_Form, qtw.QWidget):
         """
         Handle mouse and wheel events in the graphics scene.
 
-        Steps:
-        1. Check if event is for the scene.
-        2. Handle mouse move: Update link positions during dragging.
-        3. Handle mouse press: Start dragging.
-        4. Handle mouse release: Stop dragging.
-        5. Handle wheel: Adjust zoom.
-
-        :param obj: Object receiving the event
-        :param event: QEvent object
-        :return: bool, whether event was handled
         """
         if obj == self.scene:
             if event.type() == qtc.QEvent.GraphicsSceneMouseMove:
@@ -537,19 +447,14 @@ class MainWindow(Ui_Form, qtw.QWidget):
         """
         Construct the graphics scene with grid, pivots, and links.
 
-        Steps:
-        1. Clear existing scene.
-        2. Draw grid.
-        3. Add pivot points.
-        4. Add rigid links.
         """
-        # Step 1: Clear scene
+        # Step 1
         self.scene.clear()
 
-        # Step 2: Draw grid
+        # Step 2
         self.drawAGrid(DeltaX=10, DeltaY=10, Height=400, Width=400, Pen=self.penGridLines, Brush=self.brushGrid)
 
-        # Step 3: Add pivots
+        # Step 3
         self.pivot0 = self.drawPivot(-100, 0, 10, 20)
         self.pivot0.setTransformOriginPoint(qtc.QPointF(self.pivot0.x, self.pivot0.y))
         self.pivot0.rotate(90)
@@ -557,7 +462,7 @@ class MainWindow(Ui_Form, qtw.QWidget):
         self.pivot1.setTransformOriginPoint(qtc.QPointF(self.pivot1.x, self.pivot1.y))
         self.pivot1.rotate(-90)
 
-        # Step 4: Add links
+        # Step 4
         self.link0 = self.drawLinkage(self.pivot0.x, self.pivot0.y, self.pivot1.x, self.pivot1.y, radius=5,
                                       pen=self.penGridLines, brush=self.brushGrid)
         self.link1 = self.drawLinkage(-100, 0, -100, -60, 5)
@@ -569,20 +474,6 @@ class MainWindow(Ui_Form, qtw.QWidget):
         """
         Draw a reference grid in the scene.
 
-        Steps:
-        1. Determine grid dimensions.
-        2. Draw background rectangle if brush provided.
-        3. Draw vertical and horizontal grid lines.
-
-        :param DeltaX: Grid spacing in x-direction
-        :param DeltaY: Grid spacing in y-direction
-        :param Height: Grid height
-        :param Width: Grid width
-        :param CenterX: Grid center x-coordinate
-        :param CenterY: Grid center y-coordinate
-        :param Pen: QPen for grid lines
-        :param Brush: QBrush for background
-        :param SubGrid: Not implemented
         """
         # Set grid dimensions
         height = self.scene.sceneRect().height() if Height is None else Height
@@ -619,13 +510,6 @@ class MainWindow(Ui_Form, qtw.QWidget):
         """
         Draw a rectangle in the scene.
 
-        :param leftX: Left x-coordinate
-        :param topY: Top y-coordinate
-        :param widthX: Rectangle width
-        :param heightY: Rectangle height
-        :param pen: QPen for outline
-        :param brush: QBrush for fill
-        :return: QGraphicsRectItem
         """
         rect = qtw.QGraphicsRectItem(leftX, topY, widthX, heightY)
         if brush is not None:
@@ -639,12 +523,6 @@ class MainWindow(Ui_Form, qtw.QWidget):
         """
         Draw a line in the scene.
 
-        :param stX: Start x-coordinate
-        :param stY: Start y-coordinate
-        :param enX: End x-coordinate
-        :param enY: End y-coordinate
-        :param pen: QPen for line
-        :return: QGraphicsLineItem
         """
         if pen is None:
             pen = self.penMed
@@ -657,11 +535,6 @@ class MainWindow(Ui_Form, qtw.QWidget):
         """
         Convert polar coordinates to rectangular coordinates.
 
-        :param centerX: Center x-coordinate
-        :param centerY: Center y-coordinate
-        :param radius: Radius
-        :param angleDeg: Angle in degrees
-        :return: tuple, (x, y) coordinates
         """
         angleRad = angleDeg * 2.0 * math.pi / 360.0
         return centerX + radius * math.cos(angleRad), centerY + radius * math.sin(angleRad)
@@ -670,13 +543,6 @@ class MainWindow(Ui_Form, qtw.QWidget):
         """
         Draw a circle in the scene.
 
-        :param centerX: Center x-coordinate
-        :param centerY: Center y-coordinate
-        :param Radius: Circle radius
-        :param angle: Rotation angle (not used)
-        :param brush: QBrush for fill
-        :param pen: QPen for outline
-        :return: QGraphicsEllipseItem
         """
         ellipse = qtw.QGraphicsEllipseItem(centerX - Radius, centerY - Radius, 2 * Radius, 2 * Radius)
         if pen is not None:
@@ -690,12 +556,6 @@ class MainWindow(Ui_Form, qtw.QWidget):
         """
         Draw a square in the scene.
 
-        :param centerX: Center x-coordinate
-        :param centerY: Center y-coordinate
-        :param Size: Side length
-        :param brush: QBrush for fill
-        :param pen: QPen for outline
-        :return: QGraphicsRectItem
         """
         sqr = qtw.QGraphicsRectItem(centerX - Size / 2.0, centerY - Size / 2.0, Size, Size)
         if pen is not None:
@@ -709,13 +569,6 @@ class MainWindow(Ui_Form, qtw.QWidget):
         """
         Draw a triangle in the scene.
 
-        :param centerX: Center x-coordinate
-        :param centerY: Center y-coordinate
-        :param Radius: Radius to vertices
-        :param angleDeg: Rotation angle in degrees
-        :param brush: QBrush for fill
-        :param pen: QPen for outline
-        :return: QGraphicsPolygonItem
         """
         pts = []
         x, y = self.polarToRect(centerX, centerY, Radius, 0 + angleDeg)
@@ -740,12 +593,6 @@ class MainWindow(Ui_Form, qtw.QWidget):
         """
         Draw an arrow (line with triangular head) in the scene.
 
-        :param startX: Start x-coordinate
-        :param startY: Start y-coordinate
-        :param endX: End x-coordinate
-        :param endY: End y-coordinate
-        :param pen: QPen for outline
-        :param brush: QBrush for fill
         """
         line = qtw.QGraphicsLineItem(startX, startY, endX, endY)
         p = qtg.QPen() if pen is None else pen
@@ -758,12 +605,6 @@ class MainWindow(Ui_Form, qtw.QWidget):
         """
         Draw a surface with a solid top line and hatched fill.
 
-        :param centerX: Center x-coordinate
-        :param centerY: Center y-coordinate
-        :param Width: Surface width
-        :param Height: Surface height
-        :param pen: QPen for outline
-        :param brush: QBrush for fill
         """
         top = centerY
         left = centerX - Width / 2
@@ -775,14 +616,6 @@ class MainWindow(Ui_Form, qtw.QWidget):
         """
         Create and add a rigid link to the scene.
 
-        :param stX: Start x-coordinate
-        :param stY: Start y-coordinate
-        :param enX: End x-coordinate
-        :param enY: End y-coordinate
-        :param radius: Radius of semicircular ends
-        :param pen: QPen for outline
-        :param brush: QBrush for fill
-        :return: RigidLink object
         """
         if pen is None:
             pen = self.penLink
@@ -796,11 +629,6 @@ class MainWindow(Ui_Form, qtw.QWidget):
         """
         Create and add a pivot point to the scene.
 
-        :param x: X-coordinate
-        :param y: Y-coordinate
-        :param ht: Height of pivot base
-        :param wd: Width of pivot base
-        :return: RigidPivotPoint object
         """
         pivot = RigidPivotPoint(x, y, ht, wd, brush=self.brushPivot)
         self.scene.addItem(pivot)
